@@ -213,4 +213,26 @@ public class ARSceneManager : MonoBehaviour
         // In production: call ARSession.Reset() or load main menu
         // ARSession.Reset();
     }
-}
+}  
+
+
+
+STEP 6: Open Unity Project
+  → File > New Project → 3D (URP)
+  → Package Manager → Install AR Foundation + ARCore XR Plugin
+
+STEP 9: Configure AR Scene
+  → GameObject > XR > AR Session
+  → GameObject > XR > AR Session Origin
+  → Add ARRaycastManager to Session Origin
+  → Add ARPlaneManager to Session Origin
+  → Set Plane Detection Mode: Horizontal
+
+STEP 10: Load into Device
+  → File > Build Settings → Android/iOS
+  → Player Settings: Minimum API Level 24
+  → Enable: ARCore Required
+  → Build and Run on device
+
+STEP 21: Save logs
+  → Window > General > Console → Right-click → Save to File
