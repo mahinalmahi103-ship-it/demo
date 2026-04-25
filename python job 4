@@ -1,0 +1,216 @@
+# ============================================================
+# JOB 04: Augmented Reality Application (Unity + AR Foundation)
+# Certificate in AI in Immersive Technology, Level 6
+# ============================================================
+
+This job is performed in Unity (C#) using AR Foundation.
+Below is the complete step-by-step implementation.
+
+                                // ============================================================
+// ARSceneManager.cs
+// Main AR Controller — attach to ARSession Origin GameObject
+// ============================================================
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.XR.ARFoundation;
+using UnityEngine.XR.ARSubsystems;
+using UnityEngine.UI;
+
+public class ARSceneManager : MonoBehaviour
+{
+    // ─── Inspector References ────────────────────────────
+    [Header("AR Components")]
+    public ARRaycastManager    raycastManager;
+    public ARPlaneManager      planeManager;
+    public GameObject          objectToPlace;      // 3D prefab to place
+
+    [Header("UI")]
+    public Text  statusText;
+    public Text  instructionText;
+
+    // ─── Private Fields ──────────────────────────────────
+    private List<ARRaycastHit> hits          = new List<ARRaycastHit>();
+    private GameObject         placedObject  = null;
+    private bool               objectPlaced  = false;
+
+    // ─────────────────────────────────────────────────────
+    // STEP 9: Ensure AR Tracking is Enabled on Start
+    // ─────────────────────────────────────────────────────
+    void Start()
+    {
+        Debug.Log("AR Scene Started — Tracking system active");
+        statusText.text      = "Status: Scanning for surfaces...";
+        instructionText.text = "Point camera at a flat surface";
+
+        // Enable plane detection
+        planeManager.enabled = true;
+    }
+
+    // ─────────────────────────────────────────────────────
+    // STEP 11-12: Inspect scene & Identify
+    //              Interactive Objects
+    // ─────────────────────────────────────────────────────
+    void Update()
+    {
+        // STEP 13: Surface Detection — check for detected planes
+        if (planeManager.trackables.count > 0 && !objectPlaced)
+        {
+            statusText.text      = "✅ Surface detected! Tap to place object.";
+            instructionText.text = "Tap on the surface to place a 3D object";
+        }
+
+        // Detect touch input
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Began)
+            {
+                HandleTap(touch.position);
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────
+    // STEP 14: Place Virtual 3D Object onto Surface
+    // ─────────────────────────────────────────────────────
+    void HandleTap(Vector2 touchPosition)
+    {
+        // Raycast against detected AR planes
+        if (raycastManager.Raycast(touchPosition, hits,
+                                   TrackableType.PlaneWithinPolygon))
+        {
+            Pose hitPose = hits[0].pose;
+
+            if (!objectPlaced)
+            {
+                // Place new object at hit position
+                placedObject = Instantiate(objectToPlace,
+                                           hitPose.position,
+                                           hitPose.rotation);
+                objectPlaced     = true;
+                statusText.text  = "✅ Object placed! Tap to interact.";
+                instructionText.text =
+                    "Tap object to rotate | Pinch to scale";
+
+                Debug.Log($"Object placed at: {hitPose.position}");
+            }
+            else
+            {
+                // STEP 15: User Interaction — move object
+                placedObject.transform.position = hitPose.position;
+                statusText.text = "📍 Object moved to new position.";
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────
+    // STEP 15-16: User Interactions — Rotate & Scale
+    //              (called by UI buttons)
+    // ─────────────────────────────────────────────────────
+    public void RotateObject()
+    {
+        if (placedObject != null)
+        {
+            placedObject.transform.Rotate(Vector3.up, 45f);
+            statusText.text = "🔄 Object rotated 45°";
+            Debug.Log("Object rotated");
+        }
+    }
+
+    public void ScaleUp()
+    {
+        if (placedObject != null)
+        {
+            placedObject.transform.localScale *= 1.2f;
+            statusText.text = "⬆️ Object scaled up";
+        }
+    }
+
+    public void ScaleDown()
+    {
+        if (placedObject != null)
+        {
+            placedObject.transform.localScale *= 0.8f;
+            statusText.text = "⬇️ Object scaled down";
+        }
+    }
+
+    public void ResetObject()
+    {
+        if (placedObject != null)
+        {
+            Destroy(placedObject);
+            placedObject = null;
+            objectPlaced = false;
+            statusText.text      = "🔄 Object removed. Tap to place again.";
+            instructionText.text = "Point at a surface and tap";
+        }
+    }
+
+    // ─────────────────────────────────────────────────────
+    // STEP 17: Scene Structure Explanation (in-code notes)
+    // ─────────────────────────────────────────────────────
+    /*
+     SCENE STRUCTURE:
+     ├── AR Session          ← Manages AR session lifecycle
+     ├── AR Session Origin   ← Contains camera and tracking components
+     │   ├── AR Camera       ← Main camera with AR Background
+     │   ├── ARRaycastManager← Detects surfaces on tap
+     │   └── ARPlaneManager  ← Detects horizontal/vertical planes
+     ├── Directional Light   ← Scene lighting
+     └── UI Canvas
+         ├── Status Text     ← Shows current AR status
+         ├── Instruction     ← User guidance text
+         └── Buttons (Rotate, Scale+, Scale-, Reset)
+
+     TRACKING LOGIC:
+     • ARPlaneManager scans camera feed for flat surfaces
+     • ARRaycastManager converts screen tap → world position
+     • Object is instantiated at ARRaycastHit.pose position
+    */
+
+    // ─────────────────────────────────────────────────────
+    // STEP 18: Safety Considerations
+    // ─────────────────────────────────────────────────────
+    /*
+     USER SAFETY CONSIDERATIONS:
+     1. Motion Sickness: Limit rapid camera movement transitions
+     2. Eye Strain    : Recommend 20-minute usage sessions
+     3. Physical Space: Warn user if moving too fast
+     4. Lighting      : Advise adequate room lighting for tracking
+    */
+
+    // ─────────────────────────────────────────────────────
+    // STEP 19: AR Prototype Limitations
+    // ─────────────────────────────────────────────────────
+    /*
+     KNOWN LIMITATIONS:
+     1. Low Lighting   : AR tracking degrades in dark environments
+     2. Object Scale   : Very small or large objects hard to place
+     3. Reflective Surfaces: Glass/mirrors confuse plane detection
+     4. Moving Surfaces: Cannot track non-static planes
+    */
+
+    // ─────────────────────────────────────────────────────
+    // STEP 20: Correct Shutdown Procedure
+    // ─────────────────────────────────────────────────────
+    public void ShutdownAR()
+    {
+        // Disable tracking systems
+        planeManager.enabled     = false;
+        raycastManager.enabled   = false;
+
+        // Clean up placed objects
+        if (placedObject != null)
+            Destroy(placedObject);
+
+        statusText.text = "AR Session ended. Goodbye!";
+        Debug.Log("AR Application shut down cleanly.");
+
+        // In production: call ARSession.Reset() or load main menu
+        // ARSession.Reset();
+    }
+}
