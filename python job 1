@@ -1,7 +1,4 @@
-# ============================================================
-# JOB 01: Population Data Analysis
-# Certificate in AI in Immersive Technology, Level 6
-# ============================================================
+
 
 import pandas as pd
 import numpy as np
