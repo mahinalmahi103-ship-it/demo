@@ -1,0 +1,274 @@
+# ============================================================
+# JOB 02: Weather Prediction System using Machine Learning
+# Certificate in AI in Immersive Technology, Level 6
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
+
+from sklearn.model_selection    import train_test_split
+from sklearn.preprocessing      import StandardScaler, LabelEncoder
+from sklearn.linear_model       import LogisticRegression
+from sklearn.tree               import DecisionTreeClassifier
+from sklearn.ensemble           import RandomForestClassifier
+from sklearn.svm                import SVC
+from sklearn.metrics            import (accuracy_score, classification_report,
+                                        confusion_matrix, ConfusionMatrixDisplay)
+import joblib
+
+# ─────────────────────────────────────────
+# STEP 9: Load the Weather Dataset
+# ─────────────────────────────────────────
+# Dataset: Seattle Weather (or assessor-provided)
+# Columns: date, precipitation, temp_max, temp_min, wind, weather
+
+df = pd.read_csv('weather.csv')  # Load from assessor-provided file
+
+# ─────────────────────────────────────────
+# STEP 10: Initial Data Inspection
+# ─────────────────────────────────────────
+print("=" * 60)
+print("STEP 10: INITIAL DATA INSPECTION")
+print("=" * 60)
+
+print("\nShape:", df.shape)
+print("\nFirst 5 rows:\n", df.head())
+print("\nData types:\n", df.dtypes)
+print("\nMissing values:\n", df.isnull().sum())
+print("\nTarget class distribution:\n", df['weather'].value_counts())
+
+# ─────────────────────────────────────────
+# STEP 11: Define ML Problem Statement
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 11: ML PROBLEM STATEMENT")
+print("=" * 60)
+print("""
+  PROBLEM TYPE : Multi-class Classification
+  TARGET       : Predict weather type
+                 (sun / rain / drizzle / snow / fog)
+  FEATURES     : precipitation, temp_max, temp_min, wind
+  GOAL         : Build a model that accurately predicts
+                 the weather condition based on climate data.
+""")
+
+# ─────────────────────────────────────────
+# STEP 12: Feature Selection
+# ─────────────────────────────────────────
+print("=" * 60)
+print("STEP 12: FEATURE SELECTION")
+print("=" * 60)
+
+# Encode target label
+le = LabelEncoder()
+df['weather_encoded'] = le.fit_transform(df['weather'])
+print("Label Encoding:", dict(zip(le.classes_,
+                                   le.transform(le.classes_))))
+
+# Select features
+features = ['precipitation', 'temp_max', 'temp_min', 'wind']
+X = df[features]
+y = df['weather_encoded']
+
+print(f"\nSelected Features : {features}")
+print(f"Target            : weather (encoded)")
+print(f"\nFeature correlation with each other:")
+print(X.corr().round(2))
+
+# ─────────────────────────────────────────
+# STEP 13: Split Dataset
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 13: TRAIN-TEST SPLIT")
+print("=" * 60)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y)
+
+print(f"Training set size : {X_train.shape[0]} samples")
+print(f"Testing set size  : {X_test.shape[0]} samples")
+
+# ─────────────────────────────────────────
+# STEP 14: Baseline ML Model
+#           (Logistic Regression)
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 14: BASELINE MODEL — LOGISTIC REGRESSION")
+print("=" * 60)
+
+baseline = LogisticRegression(max_iter=1000, random_state=42)
+baseline.fit(X_train, y_train)
+y_pred_base = baseline.predict(X_test)
+
+acc_base = accuracy_score(y_test, y_pred_base)
+print(f"\nBaseline Accuracy (No Scaling): {acc_base * 100:.2f}%")
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred_base,
+                             target_names=le.classes_))
+
+# ─────────────────────────────────────────
+# STEP 15: Feature Scaling — Compare
+#           Before and After
+# ─────────────────────────────────────────
+print("=" * 60)
+print("STEP 15: FEATURE SCALING COMPARISON")
+print("=" * 60)
+
+scaler  = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled  = scaler.transform(X_test)
+
+# After scaling — Logistic Regression
+lr_scaled = LogisticRegression(max_iter=1000, random_state=42)
+lr_scaled.fit(X_train_scaled, y_train)
+y_pred_scaled = lr_scaled.predict(X_test_scaled)
+acc_scaled = accuracy_score(y_test, y_pred_scaled)
+
+print(f"\nLogistic Regression Accuracy BEFORE scaling: {acc_base*100:.2f}%")
+print(f"Logistic Regression Accuracy AFTER  scaling: {acc_scaled*100:.2f}%")
+print(f"\n→ Improvement from scaling: {(acc_scaled - acc_base)*100:.2f}%")
+
+# ─────────────────────────────────────────
+# STEP 16: Train Optimized Models (2+)
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 16: OPTIMIZED MODELS")
+print("=" * 60)
+
+models = {
+    'Decision Tree'   : DecisionTreeClassifier(max_depth=5, random_state=42),
+    'Random Forest'   : RandomForestClassifier(n_estimators=100, random_state=42),
+    'SVM'             : SVC(kernel='rbf', C=1.0, random_state=42)
+}
+
+results = {}
+for name, model in models.items():
+    model.fit(X_train_scaled, y_train)
+    pred = model.predict(X_test_scaled)
+    acc  = accuracy_score(y_test, pred)
+    results[name] = {'model': model, 'pred': pred, 'acc': acc}
+    print(f"\n{'─'*40}")
+    print(f"  Model : {name}")
+    print(f"  Accuracy : {acc*100:.2f}%")
+    print(classification_report(y_test, pred,
+                                 target_names=le.classes_))
+
+# ─────────────────────────────────────────
+# STEP 17: Evaluate Model Performance
+# ─────────────────────────────────────────
+print("=" * 60)
+print("STEP 17: MODEL PERFORMANCE COMPARISON")
+print("=" * 60)
+
+all_models = {
+    'Logistic Regression (Baseline)': acc_base,
+    'Logistic Regression (Scaled)'  : acc_scaled,
+    'Decision Tree'                 : results['Decision Tree']['acc'],
+    'Random Forest'                 : results['Random Forest']['acc'],
+    'SVM'                           : results['SVM']['acc']
+}
+
+print(f"\n{'Model':<35} {'Accuracy':>10}")
+print("-" * 47)
+for model_name, acc in sorted(all_models.items(),
+                               key=lambda x: x[1], reverse=True):
+    print(f"  {model_name:<33} {acc*100:>9.2f}%")
+
+best_model_name = max(results, key=lambda k: results[k]['acc'])
+best_model      = results[best_model_name]['model']
+print(f"\n🏆 Best Model: {best_model_name} "
+      f"({results[best_model_name]['acc']*100:.2f}%)")
+
+# ─────────────────────────────────────────
+# STEP 18: Visualize Model Performance
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 18: VISUALIZATIONS")
+print("=" * 60)
+
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+# --- Bar chart: accuracy comparison ---
+model_names = list(all_models.keys())
+accuracies  = [v * 100 for v in all_models.values()]
+colors      = ['#d9534f' if 'Baseline' in n else '#5bc0de'
+               if 'Scaled' in n else '#5cb85c'
+               for n in model_names]
+
+axes[0].barh(model_names, accuracies, color=colors, edgecolor='black')
+axes[0].set_xlabel('Accuracy (%)')
+axes[0].set_title('Model Accuracy Comparison', fontweight='bold')
+axes[0].set_xlim(0, 110)
+for i, v in enumerate(accuracies):
+    axes[0].text(v + 0.5, i, f'{v:.1f}%', va='center')
+
+# --- Confusion matrix of best model ---
+cm   = confusion_matrix(y_test, results[best_model_name]['pred'])
+disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                               display_labels=le.classes_)
+disp.plot(ax=axes[1], colorbar=False, cmap='Blues')
+axes[1].set_title(f'Confusion Matrix — {best_model_name}',
+                  fontweight='bold')
+
+plt.tight_layout()
+plt.savefig('weather_model_performance.png', dpi=150)
+plt.show()
+print("✅ Performance chart saved.")
+
+# ─────────────────────────────────────────
+# STEP 19: Detect Overfitting / Underfitting
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 19: OVERFITTING / UNDERFITTING DETECTION")
+print("=" * 60)
+
+for name, info in results.items():
+    train_acc = accuracy_score(y_train,
+                               info['model'].predict(X_train_scaled))
+    test_acc  = info['acc']
+    gap       = train_acc - test_acc
+
+    if gap > 0.10:
+        status = "⚠️  OVERFITTING  (train >> test)"
+    elif test_acc < 0.60:
+        status = "⚠️  UNDERFITTING (low accuracy)"
+    else:
+        status = "✅  GOOD FIT"
+
+    print(f"\n  {name}")
+    print(f"    Train Accuracy : {train_acc*100:.2f}%")
+    print(f"    Test  Accuracy : {test_acc*100:.2f}%")
+    print(f"    Gap            : {gap*100:.2f}%")
+    print(f"    Status         : {status}")
+
+# ─────────────────────────────────────────
+# STEP 20: Save and Deploy the Final Model
+# ─────────────────────────────────────────
+print("\n" + "=" * 60)
+print("STEP 20: SAVE & DEPLOY FINAL MODEL")
+print("=" * 60)
+
+joblib.dump(best_model, 'weather_prediction_model.pkl')
+joblib.dump(scaler,     'weather_scaler.pkl')
+joblib.dump(le,         'weather_label_encoder.pkl')
+
+print(f"\n✅ Model saved  : weather_prediction_model.pkl")
+print(f"✅ Scaler saved : weather_scaler.pkl")
+print(f"✅ Encoder saved: weather_label_encoder.pkl")
+
+# Quick deployment test
+print("\n📦 DEPLOYMENT TEST — Sample Prediction:")
+sample = pd.DataFrame([[10.9, 10.6, 2.8, 4.5]],
+                       columns=features)
+sample_scaled = scaler.transform(sample)
+prediction    = best_model.predict(sample_scaled)
+predicted_label = le.inverse_transform(prediction)[0]
+print(f"  Input  : precipitation=10.9, temp_max=10.6,"
+      f" temp_min=2.8, wind=4.5")
+print(f"  Output : Predicted Weather → '{predicted_label.upper()}'")
+
+print("\n✅ JOB 02 COMPLETE.")
